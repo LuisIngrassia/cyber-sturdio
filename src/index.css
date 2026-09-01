@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+/**
+ * Los tokens de la interfaz, en sincronía con src/three/lib/palette.ts.
+ *
+ * Son los mismos colores del mundo 3D. Que el HUD use la paleta del local es
+ * lo que hace que la interfaz se sienta parte de la escena y no una capa
+ * pegada encima — y evita tener que decidir colores para la UI por separado.
+ */
+@theme {
+  --color-void: #05030a;
+  --color-concrete: #141018;
+  --color-shell: #1c1824;
+  --color-magenta: #ff2d95;
+  --color-cyan: #22e0e8;
+  --color-purple: #8b3fd9;
+  --color-neon-green: #39ff88;
+  --color-amber: #ffa940;
+  --color-wood: #6b4224;
+
+  --font-display: "Chakra Petch", ui-sans-serif, system-ui, sans-serif;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  overflow: hidden; /* Esto no es una web con scroll: es un lugar. */
+  background: var(--color-void);
+  color: #e8e4f0;
+  font-family: var(--font-display);
+  -webkit-font-smoothing: antialiased;
+}
+
+canvas {
+  display: block;
+  /* Sin esto, arrastrar para orbitar selecciona texto de la página. */
+  touch-action: none;
+}
+
+/**
+ * El marco de neón: el único "estilo" de la interfaz.
+ *
+ * Un panel translúcido oscuro con borde y resplandor cian. Todas las ventanas
+ * de UI usan esto, así no hay que decidir una estética por pantalla.
+ */
+.neon-frame {
+  display: inline-block;
+  border: 1px solid color-mix(in srgb, var(--color-cyan) 55%, transparent);
+  background: color-mix(in srgb, var(--color-void) 82%, transparent);
+  backdrop-filter: blur(8px);
+  box-shadow:
+    0 0 12px color-mix(in srgb, var(--color-cyan) 28%, transparent),
+    inset 0 0 18px color-mix(in srgb, var(--color-cyan) 8%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
