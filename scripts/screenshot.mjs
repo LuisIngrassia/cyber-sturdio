@@ -32,6 +32,12 @@ const browser = await chromium.launch({
 
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
 
+// Los 30 s por defecto no alcanzan. Renderizando por software, la lectura de
+// píxeles de una escena con postprocesado tarda decenas de segundos: el propio
+// Chrome avisa con "GPU stall due to ReadPixels". No es que algo esté colgado,
+// es que va lento.
+page.setDefaultTimeout(180000);
+
 const messages = [];
 page.on("console", (m) => {
   if (m.type() === "error" || m.type() === "warning") {
@@ -40,7 +46,10 @@ page.on("console", (m) => {
 });
 page.on("pageerror", (e) => messages.push(`[pageerror] ${e.message}`));
 
-await page.goto(url, { waitUntil: "networkidle", timeout: 60000 });
+// `load` y no `networkidle`: el websocket de HMR del dev server deja la red
+// permanentemente activa, así que "sin actividad de red" no llega nunca. La
+// espera real es el canvas más un rato fijo para que se dibujen frames.
+await page.goto(url, { waitUntil: "load", timeout: 60000 });
 await page.waitForSelector("canvas", { timeout: 30000 });
 await page.waitForTimeout(settleMs);
 

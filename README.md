@@ -10,10 +10,18 @@ Referencia de estilo e interacción:
 
 ## Estado
 
-**Fase 0 — fundaciones.** La escena es un grey-box: cajas, un piso y unos tubos
-de neón, sin ningún modelo importado. Existe para responder una sola pregunta
-antes de invertir semanas en contenido: *¿el pipeline de iluminación y
-postprocesado alcanza para que esto se vea bien sin un artista 3D?*
+**Fase 1 — la fachada.** El local de noche: kitbash del frente con el Building
+Kit de Kenney, cartel de neón con parpadeo irregular, cartel vertical, toldo,
+charcos de luz en la vereda, y la vitrina dejando ver los monitores encendidos
+de adentro. La puerta responde al puntero y, si pasan unos segundos sin que
+nadie haga nada, aparece un anillo en el umbral señalando por dónde se entra.
+
+Al activarla todavía no pasa nada: el vuelo de cámara hacia adentro es la
+Fase 2.
+
+Antes, la Fase 0 dejó montado el pipeline visual y lo validó con una escena de
+cajas, para responder la única pregunta que podía hundir el proyecto — si el
+look llegaba sin un artista 3D.
 
 El plan completo por fases está en
 `~/.claude/plans/cyberstudio-es-la-idea-quiet-wind.md`.
@@ -95,6 +103,19 @@ consola.
 - **La regla de inmutabilidad de `react-hooks` v7** no deja mutar lo que
   devolvió un hook. En r3f, donde mutar materiales por frame es lo normal, el
   material se toma del ref del mesh y no de la variable del `useMemo`.
+- **El hover no es estado de React.** `Interactable` lo escribe en el store y
+  los objetos lo consultan con `getState()` dentro de su `useFrame`. Si fuera
+  estado, pasar el puntero por una fila de seis computadoras dispararía un
+  re-render por cada una para hacer algo que el loop ya hace igual.
+- **El cursor se maneja en un solo lugar** (`UILayer`), no en cada objeto. Si
+  cada uno lo pone y lo saca, alcanza con que uno se desmonte con el puntero
+  encima para dejar el cursor en "mano" el resto de la sesión.
+- **Las piezas del kit son de Kenney y están en metros.** Grilla de 2, muros de
+  2,4 de alto, y dos materiales en las 79 piezas. Los detalles que importan
+  para posicionarlas están en [`public/models/CREDITS.md`](public/models/CREDITS.md).
+- **`npm run shot` tarda.** Chrome headless sin GPU renderiza por software, y
+  leer los píxeles de una escena con postprocesado lleva decenas de segundos.
+  No está colgado.
 
 ## Assets
 

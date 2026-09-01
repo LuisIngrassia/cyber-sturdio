@@ -33,6 +33,14 @@ type UIState = {
   screen: ScreenId | null;
   /** Datos de la pantalla activa (por ejemplo, qué proyecto mostrar). */
   screenPayload: unknown;
+  /**
+   * Qué objeto tiene el puntero encima.
+   *
+   * El `id` va aparte de la etiqueta porque los objetos del mundo lo consultan
+   * para saber si son ellos los apuntados —y encenderse— y dos cosas distintas
+   * pueden compartir texto ("Ver proyecto" en seis computadoras).
+   */
+  hoveredId: string | null;
   /** Etiqueta del objeto bajo el cursor, para el prompt flotante. */
   hoveredLabel: string | null;
   zone: Zone;
@@ -41,7 +49,7 @@ type UIState = {
 
   openScreen: (screen: ScreenId, payload?: unknown) => void;
   closeScreen: () => void;
-  setHoveredLabel: (label: string | null) => void;
+  setHovered: (id: string | null, label?: string | null) => void;
   setZone: (zone: Zone) => void;
   start: () => void;
 };
@@ -49,6 +57,7 @@ type UIState = {
 export const useUIStore = create<UIState>((set) => ({
   screen: null,
   screenPayload: null,
+  hoveredId: null,
   hoveredLabel: null,
   zone: "facade",
   started: false,
@@ -57,11 +66,12 @@ export const useUIStore = create<UIState>((set) => ({
     // Al abrir una pantalla se limpia el hover: el cursor queda sobre el modal
     // y el mundo nunca recibe el evento de salida, así que el prompt del objeto
     // se quedaría colgado en pantalla para siempre.
-    set({ screen, screenPayload: payload, hoveredLabel: null }),
+    set({ screen, screenPayload: payload, hoveredId: null, hoveredLabel: null }),
 
   closeScreen: () => set({ screen: null, screenPayload: null }),
 
-  setHoveredLabel: (hoveredLabel) => set({ hoveredLabel }),
+  setHovered: (hoveredId, hoveredLabel = null) =>
+    set({ hoveredId, hoveredLabel }),
   setZone: (zone) => set({ zone }),
   start: () => set({ started: true }),
 }));
@@ -74,3 +84,13 @@ export const useUIStore = create<UIState>((set) => ({
  */
 export const useWorldInteractive = () =>
   useUIStore((state) => state.screen === null && state.started);
+
+/**
+ * Igual que el anterior pero sin suscripción, para leer desde el loop de
+ * render. Un `useFrame` que dependiera del hook re-renderizaría el componente
+ * en cada cambio; acá solo se consulta el valor del momento.
+ */
+export const worldIsInteractive = () => {
+  const { screen, started } = useUIStore.getState();
+  return screen === null && started;
+};

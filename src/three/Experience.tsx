@@ -12,7 +12,7 @@ import * as THREE from "three";
 import { Effects } from "./Effects";
 import { Atmosphere } from "./lib/Atmosphere";
 import { useQuality } from "./lib/quality";
-import { GreyboxScene } from "./world/GreyboxScene";
+import { Facade } from "./world/Facade";
 
 /**
  * El canvas y todo lo que vive adentro.
@@ -38,7 +38,7 @@ export function Experience() {
         powerPreference: "high-performance",
         toneMapping: THREE.NoToneMapping,
       }}
-      camera={{ position: [0, 3.5, 11], fov: 42, near: 0.1, far: 100 }}
+      camera={{ position: [0, 2.8, 10], fov: 45, near: 0.1, far: 100 }}
     >
       {/* El vacío negro y la niebla que funde los bordes. */}
       <Atmosphere />
@@ -55,7 +55,13 @@ export function Experience() {
        */}
       <Bvh firstHitOnly>
         <Suspense fallback={null}>
-          <GreyboxScene />
+          <Facade
+            onEnter={() => {
+              // La Fase 2 reemplaza esto por el vuelo continuo de la cámara a
+              // través de la puerta.
+              console.info("[cyberstudio] entrar: pendiente de la Fase 2");
+            }}
+          />
           <Preload all />
         </Suspense>
       </Bvh>
@@ -63,16 +69,31 @@ export function Experience() {
       <Effects />
 
       {/**
-       * Controles de órbita provisorios, para poder inspeccionar la escena
-       * mientras se tunea. En la Fase 1 se reemplazan por una órbita con
-       * límites, y en la Fase 2 por el CameraRig que sigue al avatar.
+       * Órbita acotada.
+       *
+       * Los límites no son un detalle: el diorama es una isla en el vacío y
+       * está modelado solo del lado que se ve. Sin tope azimutal el visitante
+       * gira hasta atrás y encuentra que el local no tiene fondo; sin tope
+       * polar, mira desde arriba y ve que no hay techo. Encerrar la cámara al
+       * arco desde el que la escena está construida es más barato —y se ve
+       * mejor— que construir lo que nunca se debería ver.
+       *
+       * En la Fase 2 esto lo reemplaza el CameraRig que sigue al avatar.
        */}
       <OrbitControls
         makeDefault
-        target={[0, 1.5, -1]}
-        maxPolarAngle={Math.PI / 2.1}
-        minDistance={4}
-        maxDistance={20}
+        target={[0, 1.9, 0]}
+        maxPolarAngle={Math.PI / 2.15}
+        minPolarAngle={Math.PI / 6}
+        minAzimuthAngle={-Math.PI / 3.5}
+        maxAzimuthAngle={Math.PI / 3.5}
+        minDistance={6}
+        maxDistance={22}
+        enablePan={false}
+        // Amortiguación: el arrastre queda con inercia en vez de cortarse seco.
+        // Es la diferencia entre "una escena 3D" y algo que se siente pulido.
+        enableDamping
+        dampingFactor={0.06}
       />
 
       <AdaptiveDpr pixelated />

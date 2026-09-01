@@ -6,6 +6,14 @@ import { defineConfig } from "vite";
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   base: "/",
+  server: {
+    watch: {
+      // models-raw/ son los packs sin procesar: miles de archivos que no
+      // forman parte del build. Sin ignorarlos, Vite los vigila y cualquier
+      // cosa que se descomprima ahí adentro recarga la página.
+      ignored: ["**/models-raw/**"],
+    },
+  },
   build: {
     rollupOptions: {
       output: {
