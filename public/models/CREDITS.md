@@ -83,10 +83,13 @@ de drei, si no le pasás una fuente se la baja del CDN de Google en runtime.
 
 **Características medidas al incorporarlo:**
 
-- Once clips de animación con el prefijo del armature
-  (`HumanArmature|Man_Idle`, `…|Man_Walk`, `…|Man_Sitting`, `…|Man_Typing`…).
-  Se buscan **por sufijo**, no por igualdad: si se cambia de modelo el prefijo
-  cambia y el sufijo no.
+- Once clips, todos con el prefijo del armature (`HumanArmature|Man_…`):
+  `Idle`, `Walk`, `Run`, `Jump`, `RunningJump`, `Sitting`, `Standing`,
+  `Clapping`, `Punch`, `SwordSlash`, `Death`. Se buscan **por sufijo**, no por
+  igualdad: si se cambia de modelo el prefijo cambia y el sufijo no.
+- Para la Fase 4 sirven `Sitting` y `Standing` (sentarse a una computadora).
+  **No trae ningún clip de tipeo**, así que la oficina de la Fase 6 va a
+  necesitar una animación de otra fuente o resolverse con `Sitting`.
 - Sin texturas: materiales planos por nombre (`Shirt`, `Skin`, `Pants`, `Hair`),
   lo que hace trivial repintarlo a la paleta del local.
 - **La altura hay que medirla sobre los huesos, no sobre la malla.** El

@@ -72,7 +72,18 @@ export const useUIStore = create<UIState>((set) => ({
 
   setHovered: (hoveredId, hoveredLabel = null) =>
     set({ hoveredId, hoveredLabel }),
-  setZone: (zone) => set({ zone }),
+
+  /**
+   * Cambiar de ambiente limpia el hover.
+   *
+   * react-three-fiber solo lanza rayos cuando el puntero se mueve. Si el
+   * visitante clickea la puerta y no vuelve a tocar el mouse, el objeto bajo el
+   * cursor nunca deja de estar "señalado" aunque la cámara se haya ido al otro
+   * lado del local: el cartel de "Entrar al cyber" queda flotando en pantalla
+   * ya adentro. El evento de salida no va a llegar nunca, así que hay que
+   * limpiarlo desde acá.
+   */
+  setZone: (zone) => set({ zone, hoveredId: null, hoveredLabel: null }),
   start: () => set({ started: true }),
 }));
 
