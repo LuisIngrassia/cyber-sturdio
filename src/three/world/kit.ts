@@ -78,11 +78,65 @@ const DEFAULT_TINT: Required<KitTint> = {
 };
 
 /**
+ * Materiales compartidos entre piezas.
+ *
+ * Antes cada pieza se armaba el suyo. Con treinta y seis muros en el salón eso
+ * son treinta y seis materiales idénticos: three no puede agrupar los dibujos,
+ * cambia de estado en cada uno y recompila uniformes de más. Como el tinte lo
+ * definen tres números, alcanza con memorizarlos por clave — y de paso todas
+ * las piezas del mismo tinte pasan a compartir una sola instancia.
+ */
+const materialCache = new Map<string, THREE.Material>();
+
+function tintedMaterial(
+  map: THREE.Texture | null,
+  settings: Required<KitTint>
+): THREE.Material {
+  const key = `${settings.color}|${settings.roughness}|${settings.metalness}|${map?.uuid ?? "sin"}`;
+
+  let material = materialCache.get(key);
+  if (!material) {
+    material = new THREE.MeshStandardMaterial({
+      map: map ?? undefined,
+      color: new THREE.Color(settings.color),
+      roughness: settings.roughness,
+      metalness: settings.metalness,
+    });
+    materialCache.set(key, material);
+  }
+  return material;
+}
+
+let glassMaterial: THREE.Material | null = null;
+
+function getGlassMaterial(): THREE.Material {
+  glassMaterial ??= new THREE.MeshPhysicalMaterial({
+    color: new THREE.Color(PALETTE.concrete),
+    transmission: 0.6,
+    transparent: true,
+    opacity: 0.35,
+    roughness: 0.15,
+    metalness: 0,
+    ior: 1.4,
+    // Sin esto el vidrio se dibuja tapando lo que tiene detrás según el orden
+    // de render, y el interior aparece y desaparece al orbitar.
+    depthWrite: false,
+  });
+  return glassMaterial;
+}
+
+/**
  * Devuelve una copia de la pieza, con los materiales ya repintados.
  *
  * Se clona porque `useGLTF` cachea y devuelve la misma instancia a todos los
  * que la pidan: sin clonar, colocar el mismo muro dos veces movería el mismo
- * objeto en vez de crear dos.
+ * objeto en vez de crear dos. Los materiales, en cambio, se comparten a
+ * propósito — ver `tintedMaterial`.
+ *
+ * Las piezas no proyectan sombra dinámica. El local es estático salvo el
+ * avatar, así que un shadow map que se recalcula sesenta veces por segundo
+ * paga por una imagen que no cambia; el volumen lo dan la oclusión ambiental y
+ * las sombras de contacto, que se calculan una sola vez.
  */
 export function useKitPiece(name: KitPieceName, tint?: KitTint): THREE.Object3D {
   const { scene } = useGLTF(url(name));
@@ -99,35 +153,14 @@ export function useKitPiece(name: KitPieceName, tint?: KitTint): THREE.Object3D 
     copy.traverse((node) => {
       if (!(node instanceof THREE.Mesh)) return;
 
-      node.castShadow = true;
-      node.receiveShadow = true;
+      node.castShadow = false;
+      node.receiveShadow = false;
 
       const source = node.material as THREE.MeshStandardMaterial;
-
-      if (source.name === "glass") {
-        // El vidrio de la vitrina. Oscuro y bastante transparente: tiene que
-        // dejar entrever el interior encendido, que es el anzuelo para entrar.
-        node.material = new THREE.MeshPhysicalMaterial({
-          color: new THREE.Color(PALETTE.concrete),
-          transmission: 0.6,
-          transparent: true,
-          opacity: 0.35,
-          roughness: 0.15,
-          metalness: 0,
-          ior: 1.4,
-          // Sin esto el vidrio se dibuja tapando lo que tiene detrás según el
-          // orden de render, y el interior aparece y desaparece al orbitar.
-          depthWrite: false,
-        });
-        return;
-      }
-
-      node.material = new THREE.MeshStandardMaterial({
-        map: source.map,
-        color: new THREE.Color(settings.color),
-        roughness: settings.roughness,
-        metalness: settings.metalness,
-      });
+      node.material =
+        source.name === "glass"
+          ? getGlassMaterial()
+          : tintedMaterial(source.map, settings);
     });
 
     return copy;
@@ -135,10 +168,40 @@ export function useKitPiece(name: KitPieceName, tint?: KitTint): THREE.Object3D 
 }
 
 /**
+ * La geometría y el material de una pieza, sin instanciar nada.
+ *
+ * Es lo que necesita `KitInstances` para armar una malla instanciada: la malla
+ * cruda en vez de una copia del grafo. Devuelve nulo si la pieza tiene más de
+ * una malla —las ventanas traen el vidrio aparte—, y en ese caso hay que usar
+ * `KitPiece`.
+ */
+export function useKitGeometry(name: KitPieceName, tint?: KitTint) {
+  const { scene } = useGLTF(url(name));
+  const settings = { ...DEFAULT_TINT, ...tint };
+
+  return useMemo(() => {
+    const meshes: THREE.Mesh[] = [];
+    scene.traverse((node) => {
+      if (node instanceof THREE.Mesh) meshes.push(node);
+    });
+
+    if (meshes.length !== 1) {
+      return { geometry: null, material: null };
+    }
+
+    const source = meshes[0].material as THREE.MeshStandardMaterial;
+    return {
+      geometry: meshes[0].geometry,
+      material: tintedMaterial(source.map, settings),
+    };
+  }, [scene, settings.color, settings.roughness, settings.metalness]);
+}
+
+/**
  * Precarga.
  *
  * Sin esto cada pieza dispara su propia petición la primera vez que se monta y
- * la fachada aparece de a pedazos. Son 23 archivos de pocos KB, así que pedirlos
+ * la escena aparece de a pedazos. Son archivos de pocos KB, así que pedirlos
  * todos juntos al arrancar sale más barato que escalonarlos.
  */
 export function preloadKit(names: KitPieceName[]) {

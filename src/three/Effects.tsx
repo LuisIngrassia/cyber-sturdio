@@ -49,6 +49,15 @@ export function Effects() {
       intensity: { value: 1.4, min: 0, max: 6, step: 0.05 },
       /** Radio del desparramo. Sin mipmapBlur el halo se ve en bandas. */
       radius: { value: 0.75, min: 0, max: 1, step: 0.01 },
+      /**
+       * A qué resolución se calcula el desenfoque.
+       *
+       * El bloom es puro relleno de píxeles: a media resolución cuesta la
+       * cuarta parte. Y como lo único que hace es desparramar luz en un halo
+       * difuso, la pérdida de detalle no se ve — no hay bordes finos que
+       * preservar en un resplandor.
+       */
+      resolutionScale: { value: 0.5, min: 0.25, max: 1, step: 0.05 },
     },
     { collapsed: true }
   );
@@ -84,7 +93,10 @@ export function Effects() {
           aoRadius={ao.aoRadius}
           intensity={ao.intensity}
           distanceFalloff={ao.distanceFalloff}
-          quality="medium"
+          // "low" y media resolución: la oclusión ambiental es el efecto más
+          // caro del pipeline y su aporte es una sombra suave en los rincones,
+          // donde el ruido extra de una calidad menor no se distingue.
+          quality="low"
           halfRes
         />
       ) : (
@@ -98,6 +110,7 @@ export function Effects() {
           luminanceSmoothing={bloom.luminanceSmoothing}
           intensity={bloom.intensity}
           radius={bloom.radius}
+          resolutionScale={bloom.resolutionScale}
         />
       ) : (
         <></>

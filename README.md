@@ -10,6 +10,11 @@ Referencia de estilo e interacción:
 
 ## Estado
 
+**Fase 2 — avatar, click-to-walk y el vuelo hacia adentro.** Hacés click en la
+puerta, el avatar camina hasta ella y la cámara lo acompaña adentro en un
+movimiento sin corte. Ya dentro, un click en el piso lo lleva a donde señales.
+El salón es todavía el casco vacío: el mobiliario entra en las fases 4 a 7.
+
 **Fase 1 — la fachada.** El local de noche: kitbash del frente con el Building
 Kit de Kenney, cartel de neón con parpadeo irregular, cartel vertical, toldo,
 charcos de luz en la vereda, y la vitrina dejando ver los monitores encendidos
@@ -40,6 +45,22 @@ npm run dev
 | `npm run lint` | ESLint. |
 | `npm run shot` | Captura la escena en un PNG (ver abajo). |
 | `npm run models` | Optimiza los GLB de `models-raw/` a `public/models/`. |
+
+### Atajos de desarrollo
+
+Solo existen en `npm run dev`; en producción quedan como rama muerta y el
+bundler los elimina.
+
+| Parámetro | Para qué |
+|---|---|
+| `?start=interior` | Arranca dentro del salón, salteando preloader, caminata y vuelo de cámara. Amueblar implica recargar decenas de veces y esos quince segundos por iteración no aportan nada. |
+| `?start=office` | Ídem para la oficina (Fase 6). |
+| `?q=low\|medium\|high` | Fuerza el perfil de calidad. Sirve para ver qué recibe una máquina de gama baja sin conseguir el equipo. |
+
+En desarrollo también quedan `window.__player`, `window.__camera` y
+`window.__perf` para inspeccionar desde la consola. Un mundo 3D no se depura
+leyendo el DOM: cuando el avatar no se mueve, desde afuera no se distingue
+"el click no llegó" de "está caminando muy lento".
 
 ## Stack
 
@@ -116,6 +137,30 @@ consola.
 - **`npm run shot` tarda.** Chrome headless sin GPU renderiza por software, y
   leer los píxeles de una escena con postprocesado lleva decenas de segundos.
   No está colgado.
+
+### Rendimiento
+
+Es el eje de diseño de la escena, no un pulido posterior. Lo que costó caro y
+por qué:
+
+- **Las luces puntuales no cuestan lo que iluminan.** Cada una suma una
+  iteración al shader de *cada píxel de cada material*, esté o no en cuadro.
+  Con la fachada y el salón encendidos a la vez eran dieciséis; ahora son cinco
+  adentro. El resplandor lo dan los materiales emisivos más el bloom, que es un
+  efecto de pantalla y no necesita que haya una luz ahí.
+- **`ContactShadows` re-renderiza la escena entera a una textura en cada
+  frame** si no se le pasa `frames={1}`. Había dos montadas a la vez.
+- **Sin mapa de sombras.** Nada se mueve salvo el avatar, que lleva un disco
+  oscuro pintado bajo los pies. El volumen lo dan la oclusión ambiental y las
+  sombras de contacto, calculadas una sola vez.
+- **El DPR eleva al cuadrado el costo del postprocesado.** El tope está en 1,5
+  y no en 2: es la causa más común de que una escena vaya lenta en una máquina
+  buena.
+- **Los muros repetidos van instanciados** (`KitInstances`): treinta y ocho
+  piezas idénticas en una sola llamada de dibujo.
+- **Los materiales del kit se comparten** por tinte en vez de crearse uno por
+  pieza.
+
 
 ## Assets
 

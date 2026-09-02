@@ -24,6 +24,20 @@ export type NeonSignProps = {
   font?: string;
   /** Cuánto titila. 0 = tubo nuevo, 1 = tubo a punto de quemarse. */
   flicker?: number;
+  /**
+   * Si el cartel además ilumina de verdad lo que tiene alrededor.
+   *
+   * Apagado por defecto, y es la decisión de rendimiento más importante del
+   * componente. Cada luz puntual se suma al bucle que recorre el shader por
+   * cada píxel de cada material de la escena: seis carteles con luz propia no
+   * cuestan seis veces un cartel, cuestan seis veces *toda la escena*. El
+   * resplandor que se ve alrededor del texto lo produce el bloom, que es un
+   * efecto de pantalla y no depende de que haya una luz ahí.
+   *
+   * Se enciende solo en el cartel principal, donde el charco de luz sobre la
+   * pared es parte de la identidad del local.
+   */
+  light?: boolean;
   /** Para los carteles verticales, con el texto separado por saltos de línea. */
   lineHeight?: number;
 };
@@ -38,6 +52,7 @@ export function NeonSign({
   font = "/fonts/Audiowide-Regular.ttf",
   flicker = 0.35,
   lineHeight = 1,
+  light = false,
 }: NeonSignProps) {
   const textRef = useRef<THREE.Mesh>(null);
   const lightRef = useRef<THREE.PointLight>(null);
@@ -88,14 +103,16 @@ export function NeonSign({
         <meshBasicMaterial color={color} toneMapped={false} transparent />
       </Text>
 
-      <pointLight
-        ref={lightRef}
-        color={color}
-        intensity={6}
-        distance={7}
-        decay={2}
-        position={[0, 0, 0.5]}
-      />
+      {light && (
+        <pointLight
+          ref={lightRef}
+          color={color}
+          intensity={6}
+          distance={7}
+          decay={2}
+          position={[0, 0, 0.5]}
+        />
+      )}
     </group>
   );
 }

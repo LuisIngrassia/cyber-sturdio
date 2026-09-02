@@ -69,3 +69,35 @@ están sin tocar.
 
 Van self-hosted a propósito: `troika-three-text`, que es lo que usa el `<Text>`
 de drei, si no le pasás una fuente se la baja del CDN de Google en runtime.
+
+---
+
+## Personajes
+
+### `avatar.glb` — Man (Animated Men Pack)
+
+- **Autor:** Quaternius
+- **Fuente:** https://poly.pizza/bundle/Animated-Men-Pack-DAC9SDgMQT
+- **Licencia:** CC0 1.0 (dominio público). Uso comercial permitido.
+- **Atribución requerida:** No, pero se acredita igual.
+
+**Características medidas al incorporarlo:**
+
+- Once clips de animación con el prefijo del armature
+  (`HumanArmature|Man_Idle`, `…|Man_Walk`, `…|Man_Sitting`, `…|Man_Typing`…).
+  Se buscan **por sufijo**, no por igualdad: si se cambia de modelo el prefijo
+  cambia y el sufijo no.
+- Sin texturas: materiales planos por nombre (`Shirt`, `Skin`, `Pants`, `Hair`),
+  lo que hace trivial repintarlo a la paleta del local.
+- **La altura hay que medirla sobre los huesos, no sobre la malla.** El
+  armature lleva la escala (×100) y la geometría está en pose de bind: medido
+  con `Box3.setFromObject` da nueve milímetros y el avatar sale doscientas
+  veces más grande que el edificio. El esqueleto mide 4,2324 y la escala que
+  lo lleva a 1,75 m es 0,3639 — pero se calcula en runtime para que cambiar de
+  personaje no obligue a volver a medir a mano.
+- El frente del modelo apunta a +Z, que es la convención que usa
+  `player.facing`. No hace falta corregir la rotación.
+
+**Modificaciones:** rugosidad, metalness y `envMapIntensity` ajustados en
+código para que el personaje no se vea recortado sobre una escena de neón. El
+`.glb` está sin tocar.

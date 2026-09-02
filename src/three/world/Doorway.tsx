@@ -26,11 +26,18 @@ export type DoorwayProps = {
   onEnter: () => void;
   /** Segundos sin interacción antes de mostrar la ayuda. */
   hintAfter?: number;
+  /** Con la fachada apagada (ya estamos adentro) no hace falta su luz. */
+  active?: boolean;
 };
 
 const DOOR_ID = "door";
 
-export function Doorway({ position, onEnter, hintAfter = 5 }: DoorwayProps) {
+export function Doorway({
+  position,
+  onEnter,
+  hintAfter = 5,
+  active = true,
+}: DoorwayProps) {
   const glowRef = useRef<THREE.Mesh>(null);
   const arrowRef = useRef<THREE.Group>(null);
   const ringRef = useRef<THREE.Mesh>(null);
@@ -107,14 +114,16 @@ export function Doorway({ position, onEnter, hintAfter = 5 }: DoorwayProps) {
         </mesh>
       </Interactable>
 
-      <pointLight
-        ref={lightRef}
-        position={[0, 1.2, 0.4]}
-        color={PALETTE.amber}
-        intensity={8}
-        distance={6}
-        decay={2}
-      />
+      {active && (
+        <pointLight
+          ref={lightRef}
+          position={[0, 1.2, 0.4]}
+          color={PALETTE.amber}
+          intensity={8}
+          distance={6}
+          decay={2}
+        />
+      )}
 
       {/**
        * La ayuda: un anillo en la vereda con una flecha encima.

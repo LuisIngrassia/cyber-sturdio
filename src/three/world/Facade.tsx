@@ -63,9 +63,11 @@ const FACING_CAMERA: [number, number, number] = [0, Math.PI / 2, 0];
 function Awning({
   position,
   width = 4.4,
+  active = true,
 }: {
   position: [number, number, number];
   width?: number;
+  active?: boolean;
 }) {
   const material = useMemo(
     () =>
@@ -83,12 +85,11 @@ function Awning({
         rotation={[Math.PI / 9, 0, 0]}
         position={[0, 0, 0.5]}
         material={material}
-        castShadow
       >
         <boxGeometry args={[width, 0.07, 1.3]} />
       </mesh>
       {/* Faldón delantero, colgando del borde bajo. */}
-      <mesh position={[0, -0.36, 1.11]} material={material} castShadow>
+      <mesh position={[0, -0.36, 1.11]} material={material}>
         <boxGeometry args={[width, 0.3, 0.07]} />
       </mesh>
 
@@ -97,13 +98,15 @@ function Awning({
        * un lugar al que se entra y no como un hueco: sin algo cálido acá, la
        * puerta es el punto más oscuro de toda la fachada.
        */}
-      <pointLight
-        position={[0, -0.5, 0.6]}
-        color={PALETTE.amber}
-        intensity={9}
-        distance={6}
-        decay={2}
-      />
+      {active && (
+        <pointLight
+          position={[0, -0.5, 0.6]}
+          color={PALETTE.amber}
+          intensity={9}
+          distance={6}
+          decay={2}
+        />
+      )}
     </group>
   );
 }
@@ -143,7 +146,7 @@ function BladeSign({
        * línea de 16 cm. Sobresale hacia adelante lo justo para tener sombra
        * propia y despegarse del muro.
        */}
-      <mesh material={body} castShadow>
+      <mesh material={body}>
         <boxGeometry args={[0.78, 2.7, 0.22]} />
       </mesh>
       <NeonSign
@@ -160,12 +163,18 @@ function BladeSign({
 }
 
 /**
- * Lo que se ve por la vitrina.
+ * Lo que se ve por la vitrina, desde afuera.
  *
- * Todavía no existe el interior — llega en la Fase 2 — pero la fachada no
- * funciona si el local se ve vacío: lo que invita a entrar es ver que adentro
- * hay algo prendido. Por ahora son tres pantallas emisivas y una luz cálida,
- * puestas para leerse desde afuera a través del vidrio.
+ * Es utilería pintada: una pared de fondo, tres pantallas encendidas y unas
+ * siluetas de escritorio, puestas para que desde la vereda se entrevea que
+ * adentro hay algo prendido. Sin eso el local se lee vacío y no hay motivo
+ * para entrar.
+ *
+ * **Solo existe cuando el visitante está afuera.** Es un decorado a dos metros
+ * y medio de la vitrina, o sea justo en el medio del salón de verdad: dejarlo
+ * montado al entrar pone una pared de ocho metros delante de la cámara y tapa
+ * el local entero. Es el precio de haber falseado un interior antes de que
+ * existiera, y se paga desmontándolo cuando el real toma su lugar.
  */
 function InteriorGlow() {
   const screen = useMemo(() => neonMaterial(PALETTE.cyan, 1.6), []);
@@ -199,21 +208,16 @@ function InteriorGlow() {
         </mesh>
       ))}
 
-      {/* El cálido de adentro, contra el frío de la calle. */}
+      {/**
+       * El cálido de adentro, contra el frío de la calle. Una sola luz: la
+       * segunda que había cerca del vidrio agregaba muy poco a cambio de otra
+       * iteración por píxel en todos los materiales.
+       */}
       <pointLight
-        position={[-1, 1.9, -1.6]}
+        position={[-1, 1.8, -1.4]}
         color={PALETTE.amber}
-        intensity={22}
+        intensity={26}
         distance={11}
-        decay={2}
-      />
-
-      {/* Un segundo foco, cerca del vidrio, para que la vitrina no muera. */}
-      <pointLight
-        position={[-1, 1.6, -0.5]}
-        color={PALETTE.cyan}
-        intensity={8}
-        distance={5}
         decay={2}
       />
     </group>
@@ -223,9 +227,21 @@ function InteriorGlow() {
 export type FacadeProps = {
   /** Se dispara al activar la puerta. La Fase 2 engancha acá el vuelo adentro. */
   onEnter: () => void;
+  /**
+   * Si la fachada está iluminando la escena.
+   *
+   * La geometría queda montada siempre —es el mismo muro que se ve desde
+   * adentro, y desmontarlo abriría el salón al vacío— pero sus luces y su
+   * entorno se apagan al entrar. Sin esto, estando adentro se pagan las luces
+   * de los dos ambientes a la vez: cada luz puntual encarece *todos* los
+   * píxeles de la escena, no solo los que ilumina, así que sumar las de la
+   * calle a las del salón duplica el costo del render para alumbrar una
+   * vereda que quedó a espaldas de la cámara.
+   */
+  active?: boolean;
 };
 
-export function Facade({ onEnter }: FacadeProps) {
+export function Facade({ onEnter, active = true }: FacadeProps) {
   const { ambient, bounce, streetLight } = useControls(
     "fachada",
     {
@@ -240,13 +256,14 @@ export function Facade({ onEnter }: FacadeProps) {
 
   return (
     <group>
-      <ambientLight intensity={ambient} />
+      {active && <ambientLight intensity={ambient} />}
 
       {/**
        * El entorno. Además de dar reflejos, es lo que le pone color y dirección
        * a las caras que ninguna luz alcanza: sin esto los frentes que miran a
        * cámara quedan negros, porque todo lo demás viene de arriba o de atrás.
        */}
+      {active && (
       <Environment resolution={64} frames={1}>
         <color attach="background" args={[PALETTE.void]} />
         <Lightformer
@@ -271,21 +288,30 @@ export function Facade({ onEnter }: FacadeProps) {
           scale={[16, 6, 1]}
         />
       </Environment>
+      )}
 
-      <hemisphereLight
-        intensity={bounce}
-        color={PALETTE.cyan}
-        groundColor={PALETTE.magenta}
-      />
+      {active && (
+        <hemisphereLight
+          intensity={bounce}
+          color={PALETTE.cyan}
+          groundColor={PALETTE.magenta}
+        />
+      )}
 
       {/* La luz de la calle, fría y de arriba. Define de dónde caen las sombras. */}
-      <directionalLight
-        position={[6, 12, 8]}
-        intensity={streetLight}
-        color={PALETTE.cyan}
-        castShadow
-        shadow-mapSize={[1024, 1024]}
-      />
+      {/**
+       * Sin `castShadow`. Proyectar sombras obliga a redibujar toda la escena
+       * en un mapa de profundidad cada frame, y acá no se mueve nada salvo el
+       * avatar —que tiene su propia sombra falsa bajo los pies. El volumen lo
+       * dan la oclusión ambiental y las sombras de contacto.
+       */}
+      {active && (
+        <directionalLight
+          position={[6, 12, 8]}
+          intensity={streetLight}
+          color={PALETTE.cyan}
+        />
+      )}
 
       {/* Vereda y calle */}
       <mesh
@@ -315,7 +341,7 @@ export function Facade({ onEnter }: FacadeProps) {
         position={[2, 0, 0]}
         rotation={FACING_CAMERA}
       />
-      <Doorway position={[2, 0, 0.12]} onEnter={onEnter} />
+      <Doorway position={[2, 0, 0.12]} onEnter={onEnter} active={active} />
 
       {/* Ventana chica a la derecha */}
       <KitPiece
@@ -359,9 +385,9 @@ export function Facade({ onEnter }: FacadeProps) {
        * la entrada cumple su función —señalar dónde se pasa— sin robarle el
        * protagonismo al vidrio.
        */}
-      <Awning position={[2, 2.1, 0.02]} width={2.9} />
+      <Awning position={[2, 2.1, 0.02]} width={2.9} active={active} />
 
-      <InteriorGlow />
+      {active && <InteriorGlow />}
 
       {/* ---------- Neón ---------- */}
 
@@ -377,6 +403,7 @@ export function Facade({ onEnter }: FacadeProps) {
         color={PALETTE.magenta}
         position={[-0.6, 3.35, 0.3]}
         size={0.6}
+        light
       />
 
       <BladeSign position={[-4.6, 2.1, 0.45]} color={PALETTE.cyan} />
@@ -417,15 +444,27 @@ export function Facade({ onEnter }: FacadeProps) {
         opacity={0.55}
       />
 
-      <ContactShadows
-        position={[0, 0.015, 0]}
-        opacity={0.7}
-        scale={30}
-        blur={2.2}
-        far={6}
-        resolution={512}
-        color="#000000"
-      />
+      {/**
+       * `frames={1}`: se calcula una vez y queda.
+       *
+       * Por defecto ContactShadows re-renderiza la escena entera a una textura
+       * y la desenfoca en cada frame. Con dos ambientes montados eran dos
+       * renders completos por cuadro para dibujar la sombra de un local que no
+       * se mueve. El avatar no aporta a esta sombra —tiene la suya— así que
+       * congelarla no se nota.
+       */}
+      {active && (
+        <ContactShadows
+          frames={1}
+          position={[0, 0.015, 0]}
+          opacity={0.7}
+          scale={30}
+          blur={2.2}
+          far={6}
+          resolution={512}
+          color="#000000"
+        />
+      )}
     </group>
   );
 }
