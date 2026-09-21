@@ -37,6 +37,10 @@ export function PerfProbe() {
       if ((node as { isMesh?: boolean }).isMesh) meshes++;
     });
 
+    // La escena queda accesible desde la consola: en 3D, cuando algo se ve
+    // mal, inspeccionar el grafo es la unica forma de saber qué objeto es.
+    (window as unknown as Record<string, unknown>).__scene = scene;
+
     const n = Math.max(1, frames.current);
     (window as unknown as Record<string, unknown>).__perf = {
       callsPorFrame: Math.round(gl.info.render.calls / n),

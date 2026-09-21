@@ -74,33 +74,40 @@ de drei, si no le pasás una fuente se la baja del CDN de Google en runtime.
 
 ## Personajes
 
-### `avatar.glb` — Man (Animated Men Pack)
+### `michelle.glb` + `anim/*.glb` — Michelle
 
-- **Autor:** Quaternius
-- **Fuente:** https://poly.pizza/bundle/Animated-Men-Pack-DAC9SDgMQT
-- **Licencia:** CC0 1.0 (dominio público). Uso comercial permitido.
-- **Atribución requerida:** No, pero se acredita igual.
+- **Autor:** Adobe (Mixamo)
+- **Fuente:** https://www.mixamo.com
+- **Licencia:** uso comercial permitido con cuenta de Adobe. Se puede usar el
+  personaje y las animaciones dentro de un proyecto, pero **no redistribuir los
+  archivos como assets**: acá van embebidos en la aplicación, que es uso
+  permitido.
+- **Clips:** `Walking` (con *In Place*), `Typing`, `Stand To Sit`. El personaje
+  se descargó *With Skin* y cada animación *Without Skin*.
 
-**Características medidas al incorporarlo:**
+**Lo que hubo que aprender para que funcione:**
 
-- Once clips, todos con el prefijo del armature (`HumanArmature|Man_…`):
-  `Idle`, `Walk`, `Run`, `Jump`, `RunningJump`, `Sitting`, `Standing`,
-  `Clapping`, `Punch`, `SwordSlash`, `Death`. Se buscan **por sufijo**, no por
-  igualdad: si se cambia de modelo el prefijo cambia y el sufijo no.
-- Para la Fase 4 sirven `Sitting` y `Standing` (sentarse a una computadora).
-  **No trae ningún clip de tipeo**, así que la oficina de la Fase 6 va a
-  necesitar una animación de otra fuente o resolverse con `Sitting`.
-- Sin texturas: materiales planos por nombre (`Shirt`, `Skin`, `Pants`, `Hair`),
-  lo que hace trivial repintarlo a la paleta del local.
-- **La altura hay que medirla sobre los huesos, no sobre la malla.** El
-  armature lleva la escala (×100) y la geometría está en pose de bind: medido
-  con `Box3.setFromObject` da nueve milímetros y el avatar sale doscientas
-  veces más grande que el edificio. El esqueleto mide 4,2324 y la escala que
-  lo lleva a 1,75 m es 0,3639 — pero se calcula en runtime para que cambiar de
-  personaje no obligue a volver a medir a mano.
-- El frente del modelo apunta a +Z, que es la convención que usa
-  `player.facing`. No hace falta corregir la rotación.
+- El modelo y las animaciones vienen en archivos distintos y se unen en
+  runtime. Funciona porque comparten los 65 huesos `mixamorig:` con los mismos
+  nombres: el mezclador de three resuelve cada pista buscando el nodo por
+  nombre. Ver `src/three/player/clips.ts`.
+- **`Walking` tiene que bajarse con *In Place***. Sin esa opción el clip trae
+  el desplazamiento incorporado y el personaje se va caminando solo, porque la
+  posición ya la maneja `playerState`. Verificado: las caderas se mueven 6 cm
+  en todo el ciclo.
+- **El primer fotograma de las animaciones es la pose de bind**, en T. Congelar
+  el frame cero para usarlo de reposo deja al personaje crucificado y con la
+  malla estirada en púas hacia los costados. La pose de reposo se toma a los
+  0,35 s del clip `Stand To Sit`.
+- 13 de los 65 huesos no tienen pista de rotación: son terminales
+  (`HeadTop_End`, puntas de dedos, `Toe_End`) y no deforman la malla. Es normal.
+- **Falta el clip de reposo.** Mientras no se baje "Breathing Idle", el reposo
+  es una pose estática sintetizada desde `Stand To Sit` — correcta, pero sin
+  respiración.
 
-**Modificaciones:** rugosidad, metalness y `envMapIntensity` ajustados en
-código para que el personaje no se vea recortado sobre una escena de neón. El
-`.glb` está sin tocar.
+**Modificaciones:** texturas reescaladas a 1024 y convertidas a WebP, que
+llevaron el archivo de 19,9 MB a 1,2 MB. **Sin `gltf-transform optimize`**: su
+paso de `prune` borra 13 huesos que considera sin uso, y para `Typing` los
+dedos importan. Tampoco Draco, que obligaría a cargar un decoder desde un CDN.
+Rugosidad y `envMapIntensity` ajustados en código para la escena de neón.
+
