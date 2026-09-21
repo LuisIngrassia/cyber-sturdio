@@ -254,15 +254,20 @@ function Screen({ station, part }: { station: Station; part: PropPart }) {
    *
    * El hover se consulta acá y no se recibe como prop: es estado que cambia con
    * cada movimiento del puntero, y pasar por React haría re-renderizar los seis
-   * puestos para subirle el brillo a un material. El color del `meshBasic`
-   * multiplica a la textura, así que llevarlo por encima de uno la sobreexpone
-   * y el bloom la agarra — la pantalla apuntada destaca sobre las otras cinco.
+   * puestos para subirle el brillo a un material.
+   *
+   * En reposo la pantalla va por debajo de uno. El color del `meshBasic`
+   * multiplica a la textura, y a valor pleno los proyectos de fondo claro
+   * —Recuvarilla y su ERP— se queman: en un salón a oscuras se leen como hojas
+   * de papel en blanco, no como monitores. Atenuadas quedan por debajo del
+   * umbral del bloom, y el hover las lleva por encima: apuntar una máquina la
+   * hace brillar de verdad, que es exactamente la señal que hace falta.
    */
   useFrame((_, delta) => {
     const mat = ref.current?.material as THREE.MeshBasicMaterial | undefined;
     if (!mat) return;
 
-    const wanted = useUIStore.getState().hoveredId === id ? 1.9 : 1;
+    const wanted = useUIStore.getState().hoveredId === id ? 1.15 : 0.6;
     // Se interpola en vez de saltar: encenderse de golpe se lee como un
     // parpadeo, que es justo lo que se sacó de los carteles.
     const next = THREE.MathUtils.damp(mat.color.r, wanted, 8, delta);

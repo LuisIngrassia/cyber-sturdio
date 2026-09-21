@@ -63,6 +63,7 @@ function World() {
 
   const setFocused = useUIStore((s) => s.setFocused);
   const focused = useUIStore((s) => s.focused);
+  const openScreen = useUIStore((s) => s.openScreen);
 
   /**
    * Usar una máquina: caminar hasta ella y acercar la cámara a la pantalla.
@@ -78,10 +79,20 @@ function World() {
       const arrive = () => {
         setCameraMode("cinematic");
         setFocused(station.id);
-        // Mirando la pantalla, de frente y un poco por encima.
+        // Mirando la pantalla, de frente y un poco por encima. La ficha se
+        // abre cuando la cámara llegó, no al arrancar: si apareciera de una,
+        // taparía el movimiento que la trajo hasta acá y la transición no se
+        // vería nunca.
         focusOn({
           look: new THREE.Vector3(DESK_X + 0.1, DESK_SURFACE_Y + 0.3, station.z),
           from: new THREE.Vector3(DESK_X + 1.25, DESK_SURFACE_Y + 0.45, station.z),
+        }).eventCallback("onComplete", () => {
+          // Si el visitante apretó Esc mientras la cámara viajaba, la toma
+          // termina igual: sin esta guarda, abriría la ficha de una máquina
+          // que ya dejó de mirar.
+          if (useUIStore.getState().focused === station.id) {
+            openScreen("project", station.id);
+          }
         });
         // El avatar queda mirando al escritorio.
         player.facing = -Math.PI / 2;
@@ -96,9 +107,17 @@ function World() {
     [setFocused]
   );
 
-  /** Soltar el enfoque y devolver la cámara al seguimiento. */
+  /**
+   * Soltar el enfoque y devolver la cámara al seguimiento.
+   *
+   * Cierra también la ficha si estaba abierta. Son dos capas y el visitante las
+   * percibe como una sola cosa: dejar de mirar esa computadora.
+   */
   const release = useCallback(() => {
-    if (!useUIStore.getState().focused) return;
+    const state = useUIStore.getState();
+    if (!state.focused && !state.screen) return;
+
+    state.closeScreen();
     setFocused(null);
     releaseFocus(ROOM, () => setCameraMode("follow"));
   }, [setFocused]);
@@ -119,6 +138,30 @@ function World() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [focused, release]);
+
+  /**
+   * El botón de cerrar de la ficha también suelta la cámara.
+   *
+   * La ficha vive en la capa DOM y no sabe nada del mundo 3D —esa es la regla
+   * de la arquitectura— así que cierra lo suyo y acá nos enteramos por el
+   * store.
+   *
+   * Se escucha la *transición* de abierta a cerrada, no el estado. Mirando solo
+   * si hay ficha abierta, el segundo que pasa entre que la cámara empieza a
+   * acercarse y la ficha aparece cuenta como "cerrada" y el enfoque se cancela
+   * solo, antes de llegar.
+   *
+   * Y va por la suscripción del store en vez de un efecto sobre el render: así
+   * la reacción ocurre fuera del ciclo de React, sin disparar un render en
+   * cascada.
+   */
+  useEffect(
+    () =>
+      useUIStore.subscribe((state, previous) => {
+        if (previous.screen === "project" && state.screen === null) release();
+      }),
+    [release]
+  );
 
   return (
     <>

@@ -1,7 +1,9 @@
 import { useEffect } from "react";
 
+import { PROJECTS } from "../data/projects";
 import { useUIStore } from "../state/store";
 import { Preloader } from "./Preloader";
+import { ProjectScreen } from "./screens/ProjectScreen";
 
 /**
  * La interfaz que se monta sobre el mundo.
@@ -17,6 +19,12 @@ export function UILayer() {
   const hoveredId = useUIStore((s) => s.hoveredId);
   const hoveredLabel = useUIStore((s) => s.hoveredLabel);
   const focused = useUIStore((s) => s.focused);
+  const screen = useUIStore((s) => s.screen);
+  const screenPayload = useUIStore((s) => s.screenPayload);
+  const closeScreen = useUIStore((s) => s.closeScreen);
+
+  const projectIndex = PROJECTS.findIndex((p) => p.id === screenPayload);
+  const project = projectIndex >= 0 ? PROJECTS[projectIndex] : null;
 
   /**
    * El cursor del documento sigue al hover del mundo.
@@ -41,7 +49,16 @@ export function UILayer() {
     <div className="pointer-events-none fixed inset-0 z-10">
       <Preloader />
 
-      {focused && (
+      {screen === "project" && project && (
+        <ProjectScreen
+          project={project}
+          index={projectIndex}
+          total={PROJECTS.length}
+          onClose={closeScreen}
+        />
+      )}
+
+      {focused && !project && (
         <div className="absolute bottom-12 left-1/2 -translate-x-1/2">
           <span className="neon-frame text-cyan px-5 py-2 text-xs tracking-[0.2em] uppercase">
             Esc para volver
@@ -49,7 +66,7 @@ export function UILayer() {
         </div>
       )}
 
-      {!focused && hoveredLabel && (
+      {!focused && !project && hoveredLabel && (
         <div className="absolute bottom-12 left-1/2 -translate-x-1/2">
           <span className="neon-frame text-cyan px-5 py-2 text-xs tracking-[0.2em] uppercase">
             {hoveredLabel}

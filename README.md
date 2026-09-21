@@ -11,10 +11,11 @@ Referencia de estilo e interacción:
 ## Estado
 
 **Los puestos de computadora.** Seis máquinas contra la pared izquierda del
-salón, una por proyecto, con la pantalla encendida mostrando de qué se trata.
-Se acercan al pasar el puntero y, al activarlas, el avatar camina hasta el
-puesto y la cámara enfoca el monitor; `Esc` vuelve. El avatar rodea los
-escritorios en vez de atravesarlos.
+salón, una por proyecto, con el hero del sitio en la pantalla del tubo. Se
+encienden al pasar el puntero y, al activarlas, el avatar camina hasta el
+puesto, la cámara enfoca el monitor y se abre la ficha del proyecto: el hero en
+el centro y, a los lados, el stack, qué capas tiene y qué lo distingue. `Esc`
+cierra las dos cosas. El avatar rodea los escritorios en vez de atravesarlos.
 
 Falta que se siente: el clip existe pero tiene desplazamiento de raíz y la
 silla queda dentro del rectángulo bloqueado, así que entra junto con el modal
