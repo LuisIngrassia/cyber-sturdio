@@ -7,6 +7,7 @@ import { useUIStore } from "../../state/store";
 import { Interactable } from "../interaction/Interactable";
 import { PALETTE } from "../lib/palette";
 import { Instanced, type Placement } from "./Instanced";
+import { useHeroTexture } from "./screenImage";
 import { screenTexture } from "./screenTexture";
 import {
   CHAIR_HEIGHT,
@@ -226,13 +227,23 @@ export function Workstations({ onUse }: WorkstationsProps) {
  * mapping es lo que le deja pasar el umbral del bloom.
  */
 function Screen({ station, part }: { station: Station; part: PropPart }) {
+  /**
+   * La captura del sitio si existe; si no, el nombre dibujado por código.
+   *
+   * El respaldo no es un placeholder temporal que haya que sacar: es lo que
+   * mantiene el salón entero mientras las capturas van llegando de a una, y lo
+   * que va a seguir cubriendo a un proyecto nuevo el día que se agregue una
+   * entrada a `projects.ts` antes de tener su imagen.
+   */
+  const hero = useHeroTexture(station.id);
+
   const material = useMemo(
     () =>
       new THREE.MeshBasicMaterial({
-        map: screenTexture(station.nombre, station.tagline),
+        map: hero ?? screenTexture(station.nombre, station.tagline),
         toneMapped: false,
       }),
-    [station.nombre, station.tagline]
+    [hero, station.nombre, station.tagline]
   );
 
   const ref = useRef<THREE.Mesh>(null);
