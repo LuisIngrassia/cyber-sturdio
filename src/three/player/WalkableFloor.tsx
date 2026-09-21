@@ -4,6 +4,7 @@ import { useRef } from "react";
 import * as THREE from "three";
 
 import { useUIStore, worldIsInteractive } from "../../state/store";
+import { FLOOR_LAYERS } from "../lib/layers";
 import { PALETTE } from "../lib/palette";
 import { player, walkTo } from "./playerState";
 
@@ -24,11 +25,21 @@ export type WalkableFloorProps = {
   /** Tamaño del plano de clicks, en metros. */
   size?: [number, number];
   position?: [number, number, number];
+  /**
+   * Se avisa cuando el visitante manda a caminar.
+   *
+   * Sirve para que quien esté mirando algo de cerca suelte la cámara: mandar al
+   * avatar a otro lado es, implícitamente, dejar de mirar la pantalla. Sin esto
+   * el avatar se iría caminando y la cámara se quedaría enfocando un monitor
+   * vacío.
+   */
+  onWalk?: () => void;
 };
 
 export function WalkableFloor({
   size = [40, 40],
-  position = [0, 0.005, 0],
+  position = [0, FLOOR_LAYERS.clickPlane.y, 0],
+  onWalk,
 }: WalkableFloorProps) {
   const markerRef = useRef<THREE.Mesh>(null);
   const markerLife = useRef(0);
@@ -41,13 +52,14 @@ export function WalkableFloor({
     const { x, z } = event.point;
 
     if (!walkTo(zone, x, z)) return;
+    onWalk?.();
 
     // El anillo se planta donde el avatar realmente va a terminar, no donde
     // cayó el click: si el punto estaba dentro de un mueble, el destino se
     // corrigió al borde y marcar el click original mentiría.
     const goal = player.path[player.path.length - 1];
     if (goal && markerRef.current) {
-      markerRef.current.position.set(goal.x, 0.02, goal.z);
+      markerRef.current.position.set(goal.x, FLOOR_LAYERS.clickMarker.y, goal.z);
       markerLife.current = 1;
     }
   };
@@ -86,7 +98,7 @@ export function WalkableFloor({
         ref={markerRef}
         rotation={[-Math.PI / 2, 0, 0]}
         visible={false}
-        renderOrder={2}
+        renderOrder={FLOOR_LAYERS.clickMarker.order}
       >
         <ringGeometry args={[0.22, 0.32, 28]} />
         <meshBasicMaterial

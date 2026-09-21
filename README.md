@@ -10,13 +10,23 @@ Referencia de estilo e interacción:
 
 ## Estado
 
+**Los puestos de computadora.** Seis máquinas contra la pared izquierda del
+salón, una por proyecto, con la pantalla encendida mostrando de qué se trata.
+Se acercan al pasar el puntero y, al activarlas, el avatar camina hasta el
+puesto y la cámara enfoca el monitor; `Esc` vuelve. El avatar rodea los
+escritorios en vez de atravesarlos.
+
+Falta que se siente: el clip existe pero tiene desplazamiento de raíz y la
+silla queda dentro del rectángulo bloqueado, así que entra junto con el modal
+del proyecto (Fase 4).
+
 **Fase 2 — avatar, click-to-walk y el vuelo hacia adentro.** Hacés click en la
 puerta, el avatar camina hasta ella y la cámara lo acompaña adentro en un
 movimiento sin corte. Ya dentro, un click en el piso lo lleva a donde señales.
 El salón es todavía el casco vacío: el mobiliario entra en las fases 4 a 7.
 
 **Fase 1 — la fachada.** El local de noche: kitbash del frente con el Building
-Kit de Kenney, cartel de neón con parpadeo irregular, cartel vertical, toldo,
+Kit de Kenney, cartel de neón, cartel vertical, toldo,
 charcos de luz en la vereda, y la vitrina dejando ver los monitores encendidos
 de adentro. La puerta responde al puntero y, si pasan unos segundos sin que
 nadie haga nada, aparece un anillo en el umbral señalando por dónde se entra.
@@ -45,6 +55,7 @@ npm run dev
 | `npm run lint` | ESLint. |
 | `npm run shot` | Captura la escena en un PNG (ver abajo). |
 | `npm run models` | Optimiza los GLB de `models-raw/` a `public/models/`. |
+| `npm run furniture` | Convierte y comprime los muebles del salón. |
 
 ### Atajos de desarrollo
 
@@ -56,6 +67,11 @@ bundler los elimina.
 | `?start=interior` | Arranca dentro del salón, salteando preloader, caminata y vuelo de cámara. Amueblar implica recargar decenas de veces y esos quince segundos por iteración no aportan nada. |
 | `?start=office` | Ídem para la oficina (Fase 6). |
 | `?q=low\|medium\|high` | Fuerza el perfil de calidad. Sirve para ver qué recibe una máquina de gama baja sin conseguir el equipo. |
+
+Y desde la consola, `__freeCam = { pos: [x,y,z], target: [x,y,z] }` para mirar
+la escena desde donde uno quiera (`null` devuelve el control). Colocar muebles
+a ojo exige poder elegir el ángulo, y los tres modos de la cámara están atados
+al avatar.
 
 En desarrollo también quedan `window.__player`, `window.__camera` y
 `window.__perf` para inspeccionar desde la consola. Un mundo 3D no se depura
@@ -131,6 +147,18 @@ consola.
 - **El cursor se maneja en un solo lugar** (`UILayer`), no en cada objeto. Si
   cada uno lo pone y lo saca, alcanza con que uno se desmonte con el puntero
   encima para dejar el cursor en "mano" el resto de la sesión.
+- **Nada que se apoye en el piso elige su propia altura.** Todas las capas
+  —sombras de contacto, charcos de luz, la sombra del avatar, el marcador de
+  click— salen de `src/three/lib/layers.ts`. Dos de ellas habían quedado en el
+  mismo plano y el salón titilaba entero.
+- **El estado de animación se le pregunta al mezclador, no se recuerda.** El
+  doble montaje de StrictMode conserva los refs pero hace que drei arme un
+  mezclador nuevo: una variable que diga "el reposo ya está sonando" miente, y
+  el personaje se queda en pose de bind con los brazos en cruz.
+- **GSAP tiene el suavizado de retrasos desactivado** (`camera/gsapSetup.ts`).
+  Por defecto congela las animaciones cuando un frame tarda más de medio
+  segundo, y eso deja los vuelos de cámara clavados a mitad de camino en
+  cualquier máquina lenta.
 - **Las piezas del kit son de Kenney y están en metros.** Grilla de 2, muros de
   2,4 de alto, y dos materiales en las 79 piezas. Los detalles que importan
   para posicionarlas están en [`public/models/CREDITS.md`](public/models/CREDITS.md).

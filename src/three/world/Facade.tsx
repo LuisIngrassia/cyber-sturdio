@@ -3,6 +3,7 @@ import { useControls } from "leva";
 import { useMemo } from "react";
 import * as THREE from "three";
 
+import { FLOOR_LAYERS } from "../lib/layers";
 import { LightPool } from "../lib/LightPool";
 import { concreteMaterial, neonMaterial } from "../lib/materials";
 import { PALETTE } from "../lib/palette";
@@ -156,7 +157,6 @@ function BladeSign({
         size={0.34}
         lineHeight={1.05}
         backing={false}
-        flicker={0.5}
       />
     </group>
   );
@@ -420,25 +420,27 @@ export function Facade({ onEnter, active = true }: FacadeProps) {
         color={PALETTE.green}
         position={[4, 1.95, 0.24]}
         size={0.13}
-        flicker={0.15}
       />
 
       {/* ---------- Charcos de luz en la vereda ---------- */}
       <LightPool
-        position={[-1, 0.02, 2.4]}
+        x={-1}
+        z={2.4}
         size={11}
         color={PALETTE.magenta}
         opacity={0.5}
       />
       <LightPool
-        position={[4, 0.02, 1.8]}
+        x={4}
+        z={1.8}
         size={5}
         color={PALETTE.green}
         opacity={0.35}
       />
       {/* El cálido que se escapa por la puerta: la invitación a entrar. */}
       <LightPool
-        position={[2, 0.02, 1.6]}
+        x={2}
+        z={1.6}
         size={4.5}
         color={PALETTE.amber}
         opacity={0.55}
@@ -456,7 +458,8 @@ export function Facade({ onEnter, active = true }: FacadeProps) {
       {active && (
         <ContactShadows
           frames={1}
-          position={[0, 0.015, 0]}
+          position={[0, FLOOR_LAYERS.contactShadow.y, 0]}
+          renderOrder={FLOOR_LAYERS.contactShadow.order}
           opacity={0.7}
           scale={30}
           blur={2.2}

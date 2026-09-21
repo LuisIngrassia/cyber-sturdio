@@ -4,6 +4,7 @@ import * as THREE from "three";
 
 import { useUIStore } from "../../state/store";
 import { Interactable } from "../interaction/Interactable";
+import { FLOOR_LAYERS } from "../lib/layers";
 import { PALETTE } from "../lib/palette";
 
 /**
@@ -143,8 +144,9 @@ export function Doorway({
 
       <mesh
         ref={ringRef}
-        position={[0, 0.03, 1.5]}
+        position={[0, FLOOR_LAYERS.hint.y, 1.5]}
         rotation={[-Math.PI / 2, 0, 0]}
+        renderOrder={FLOOR_LAYERS.hint.order}
       >
         <ringGeometry args={[0.42, 0.58, 32]} />
         <meshBasicMaterial

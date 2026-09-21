@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import * as THREE from "three";
 
+import { FLOOR_LAYERS } from "./layers";
+
 /**
  * Un charco de luz de color en el piso. No es una luz.
  *
@@ -55,7 +57,13 @@ function getRadialTexture() {
 }
 
 export type LightPoolProps = {
-  position?: [number, number, number];
+  /**
+   * Dónde cae el charco sobre el piso. Solo X y Z: la altura la fija
+   * `FLOOR_LAYERS` y no es negociable desde afuera — que cada llamador
+   * eligiera su propia `y` es justamente lo que hacía titilar el salón.
+   */
+  x: number;
+  z: number;
   /** Diámetro del charco en metros. */
   size?: number;
   color: string;
@@ -65,7 +73,8 @@ export type LightPoolProps = {
 };
 
 export function LightPool({
-  position = [0, 0, 0],
+  x,
+  z,
   size = 4,
   color,
   opacity = 0.55,
@@ -91,12 +100,11 @@ export function LightPool({
 
   return (
     <mesh
-      position={position}
+      position={[x, FLOOR_LAYERS.lightPool.y, z]}
       rotation={[-Math.PI / 2, 0, 0]}
       scale={[scaleX, 1, 1]}
       material={material}
-      // Un pelo por encima del piso para que no pelee con él por el z-buffer.
-      renderOrder={1}
+      renderOrder={FLOOR_LAYERS.lightPool.order}
     >
       <planeGeometry args={[size, size]} />
     </mesh>

@@ -16,6 +16,7 @@ import { Preloader } from "./Preloader";
 export function UILayer() {
   const hoveredId = useUIStore((s) => s.hoveredId);
   const hoveredLabel = useUIStore((s) => s.hoveredLabel);
+  const focused = useUIStore((s) => s.focused);
 
   /**
    * El cursor del documento sigue al hover del mundo.
@@ -40,7 +41,15 @@ export function UILayer() {
     <div className="pointer-events-none fixed inset-0 z-10">
       <Preloader />
 
-      {hoveredLabel && (
+      {focused && (
+        <div className="absolute bottom-12 left-1/2 -translate-x-1/2">
+          <span className="neon-frame text-cyan px-5 py-2 text-xs tracking-[0.2em] uppercase">
+            Esc para volver
+          </span>
+        </div>
+      )}
+
+      {!focused && hoveredLabel && (
         <div className="absolute bottom-12 left-1/2 -translate-x-1/2">
           <span className="neon-frame text-cyan px-5 py-2 text-xs tracking-[0.2em] uppercase">
             {hoveredLabel}

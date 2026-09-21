@@ -1,6 +1,7 @@
 import * as THREE from "three";
 
 import type { Zone } from "../../state/store";
+import { STATIONS, stationBlocker } from "../world/stations";
 import { clampToWalkable, planPath, rect, type WalkArea } from "./walkable";
 
 /**
@@ -45,6 +46,9 @@ if (import.meta.env.DEV) {
   const w = window as unknown as Record<string, unknown>;
   w.__player = player;
   w.__stats = debugStats;
+  // Para poder probar el área caminable desde la consola sin depender de
+  // acertarle a un píxel del render.
+  w.__walkTo = (x: number, z: number) => walkTo("interior", x, z);
 }
 
 /**
@@ -64,7 +68,9 @@ export const WALK_AREAS: Record<Zone, WalkArea> = {
   interior: {
     // 10 de ancho por 12 de fondo, que es el salón que arma Interior.tsx.
     floors: [rect(-4.6, 4.6, -11.4, -0.3)],
-    blockers: [],
+    // Los seis puestos. `walkable.ts` los infla por el radio del cuerpo y
+    // `planPath` los rodea por una esquina.
+    blockers: STATIONS.map(stationBlocker),
   },
   office: {
     floors: [rect(-2.2, 2.2, -3.2, -0.4)],

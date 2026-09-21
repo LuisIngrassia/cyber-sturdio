@@ -1,5 +1,4 @@
 import {
-  AdaptiveDpr,
   Bvh,
   OrbitControls,
   PerformanceMonitor,
@@ -7,22 +6,30 @@ import {
   Stats,
 } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
-import { Suspense, useCallback, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 
 import { useUIStore } from "../state/store";
 import { CameraRig, type CameraMode } from "./camera/CameraRig";
 import { walkInAndEnter } from "./camera/enterShot";
+import { focusOn, releaseFocus } from "./camera/focusShot";
 import { applyDevStart } from "./devStart";
 import { Effects } from "./Effects";
 import { Atmosphere } from "./lib/Atmosphere";
 import { PerfProbe } from "./lib/PerfProbe";
 import { useQuality } from "./lib/quality";
 import { Avatar } from "./player/Avatar";
-import { walkTo } from "./player/playerState";
+import { player, walkTo } from "./player/playerState";
 import { WalkableFloor } from "./player/WalkableFloor";
 import { Facade } from "./world/Facade";
 import { Interior, ROOM } from "./world/Interior";
+import {
+  DESK_SURFACE_Y,
+  DESK_X,
+  stationAnchor,
+  type Station,
+} from "./world/stations";
+import { Workstations } from "./world/Workstations";
 
 /**
  * El atajo de desarrollo se resuelve una sola vez, en el módulo.
@@ -54,6 +61,65 @@ function World() {
     });
   }, [setZone]);
 
+  const setFocused = useUIStore((s) => s.setFocused);
+  const focused = useUIStore((s) => s.focused);
+
+  /**
+   * Usar una máquina: caminar hasta ella y acercar la cámara a la pantalla.
+   *
+   * El enfoque se encadena a la llegada y no se dispara junto con el click. Si
+   * la cámara se acercara de una, dejaría al avatar caminando fuera de cuadro y
+   * el visitante vería la pantalla antes de haber llegado, que rompe la idea de
+   * que hay un cuerpo recorriendo el lugar.
+   */
+  const useStation = useCallback(
+    (station: Station) => {
+      const anchor = stationAnchor(station);
+      const arrive = () => {
+        setCameraMode("cinematic");
+        setFocused(station.id);
+        // Mirando la pantalla, de frente y un poco por encima.
+        focusOn({
+          look: new THREE.Vector3(DESK_X + 0.1, DESK_SURFACE_Y + 0.3, station.z),
+          from: new THREE.Vector3(DESK_X + 1.25, DESK_SURFACE_Y + 0.45, station.z),
+        });
+        // El avatar queda mirando al escritorio.
+        player.facing = -Math.PI / 2;
+      };
+
+      if (walkTo("interior", anchor.x, anchor.z)) {
+        player.onArrive = arrive;
+      } else {
+        arrive();
+      }
+    },
+    [setFocused]
+  );
+
+  /** Soltar el enfoque y devolver la cámara al seguimiento. */
+  const release = useCallback(() => {
+    if (!useUIStore.getState().focused) return;
+    setFocused(null);
+    releaseFocus(ROOM, () => setCameraMode("follow"));
+  }, [setFocused]);
+
+  /**
+   * `Esc` sale del enfoque.
+   *
+   * El atajo vive acá y no en la capa de interfaz porque lo que cambia es el
+   * modo de la cámara, que es estado de esta escena. La interfaz solo muestra
+   * el aviso.
+   */
+  useEffect(() => {
+    if (!focused) return;
+
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") release();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [focused, release]);
+
   return (
     <>
       {/**
@@ -65,10 +131,15 @@ function World() {
        * pasar, y además cortaría el vuelo continuo a la mitad.
        */}
       <Facade onEnter={enter} active={!inside} />
-      {inside && <Interior />}
+      {inside && (
+        <>
+          <Interior />
+          <Workstations onUse={useStation} />
+        </>
+      )}
 
       <Avatar />
-      <WalkableFloor />
+      <WalkableFloor onWalk={release} />
 
       {/* Adentro, la cámara no puede salirse del salón. Ver CameraRig. */}
       <CameraRig mode={cameraMode} bounds={inside ? ROOM : undefined} />
@@ -116,6 +187,7 @@ export function Experience() {
   // techo del perfil y se ajusta solo.
   const [dpr, setDpr] = useState(quality.dpr[1]);
   const declined = useRef(false);
+  const started = useUIStore((s) => s.started);
 
   return (
     <Canvas
@@ -142,15 +214,31 @@ export function Experience() {
       {/* El vacío negro y la niebla que funde los bordes. */}
       <Atmosphere />
 
-      <PerformanceMonitor
-        onDecline={() => {
-          // Una sola vez. Si se deja que suba y baje solo, el DPR oscila y el
-          // cambio de nitidez de ida y vuelta se nota más que ir siempre bajo.
-          if (declined.current) return;
-          declined.current = true;
-          setDpr(quality.dpr[0]);
-        }}
-      />
+      {/**
+       * Un solo sistema decide la resolución.
+       *
+       * Antes convivían `PerformanceMonitor` y `<AdaptiveDpr pixelated />`: el
+       * primero movía `performance.current` y el segundo lo multiplicaba por el
+       * DPR base, así que la resolución subía y bajaba sola y el escalado
+       * pixelado hacía que cada bajada se viera en bloques. Eso era la mitad de
+       * la falta de nitidez.
+       *
+       * La otra mitad: el monitor arrancaba montado desde el primer frame, y el
+       * bajón de la carga —que es inevitable y no dice nada del rendimiento
+       * real— bastaba para fijar el DPR al piso por el resto de la sesión. Por
+       * eso ahora solo se monta una vez que el visitante entró.
+       */}
+      {started && (
+        <PerformanceMonitor
+          onDecline={() => {
+            // Una sola vez: si se deja que suba y baje solo, el cambio de
+            // nitidez de ida y vuelta se nota más que ir siempre un punto bajo.
+            if (declined.current) return;
+            declined.current = true;
+            setDpr(quality.dpr[0]);
+          }}
+        />
+      )}
 
       {/**
        * Bvh acelera el raycasting. Importa acá: el click-to-walk lanza un rayo
@@ -164,8 +252,6 @@ export function Experience() {
       </Bvh>
 
       <Effects />
-
-      <AdaptiveDpr pixelated />
 
       {/**
        * Contador de FPS, solo en desarrollo.

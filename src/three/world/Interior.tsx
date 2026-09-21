@@ -2,6 +2,7 @@ import { ContactShadows, Environment, Lightformer } from "@react-three/drei";
 import { useControls } from "leva";
 import { useMemo } from "react";
 
+import { FLOOR_LAYERS } from "../lib/layers";
 import { LightPool } from "../lib/LightPool";
 import { concreteMaterial, neonMaterial } from "../lib/materials";
 import { PALETTE } from "../lib/palette";
@@ -207,14 +208,15 @@ export function Interior() {
               decay={2}
             />
           )}
-          <LightPool position={[0, 0.02, z]} size={8} color={color} opacity={0.32} />
+          <LightPool x={0} z={z} size={8} color={color} opacity={0.32} />
         </group>
       ))}
 
       {/* Una sola vez: el salón es estático. Ver el comentario en Facade. */}
       <ContactShadows
         frames={1}
-        position={[0, 0.02, (ROOM.minZ + ROOM.maxZ) / 2]}
+        position={[0, FLOOR_LAYERS.contactShadow.y, (ROOM.minZ + ROOM.maxZ) / 2]}
+        renderOrder={FLOOR_LAYERS.contactShadow.order}
         opacity={0.55}
         scale={26}
         blur={2.4}

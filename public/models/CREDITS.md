@@ -111,3 +111,46 @@ paso de `prune` borra 13 huesos que considera sin uso, y para `Typing` los
 dedos importan. Tampoco Draco, que obligaría a cargar un decoder desde un CDN.
 Rugosidad y `envMapIntensity` ajustados en código para la escena de neón.
 
+
+---
+
+## Mobiliario del salón
+
+Los tres modelos los aportó el usuario. Se procesan con `npm run furniture`
+desde `models-raw/furniture/`; el script documenta las reglas del pipeline.
+
+### `pc/desk.glb` y `pc/desk-props.glb` — escritorio con utilería
+
+- **Origen:** `Table.glb`, entregado por el usuario (Blender, glTF 2.0).
+- **Verificar la licencia antes de publicar.**
+
+**Lo que hubo que medir para colocarlo:**
+
+- Llega a escala arbitraria y con la base en `y = -2`. Mide 2,2 × 4 × 5,6.
+- **La tapa está a 3,01 de las 4 unidades de alto**; lo que sigue por encima es
+  un respaldo. Por eso se normaliza la caja a 1,00 y no a 0,75: así la
+  superficie —lo único que importa para apoyar el monitor— cae en 0,755.
+- Su lado largo corre sobre **Z**, que es la orientación de la pared izquierda:
+  apoya sin rotar sobre su eje vertical. Sí va girado media vuelta, para que el
+  respaldo quede contra la pared y no tapándole el teclado a quien se sienta.
+- Venía con la utilería pegada: 19 mallas, 25 materiales, 15 texturas de 1K.
+  Se parte en dos archivos para no repetir los libros en los seis puestos.
+- **De las 17 piezas de utilería se conservan 4.** No por peso sino por llamadas
+  de dibujo: tienen 23 materiales entre todas, así que no hay nada que fundir y
+  cada una cuesta una llamada. Cuatro alcanzan para que un par de puestos se
+  vean usados.
+
+### `pc/monitor.glb` — monitor CRT con teclado
+
+- **Origen:** `CRT+Monitor.fbx`, entregado por el usuario.
+- Incluye el teclado en la misma malla. 28.300 triángulos de origen, decimado
+  al 25%.
+
+### `pc/chair.glb` — silla de plástico
+
+- **Origen:** `Plastic+Chair.fbx`, entregado por el usuario.
+- 4,7 MB **sin una sola textura**: era malla pura, unos 170.000 triángulos.
+  Decimada al 6%. Va girada media vuelta: sin eso el respaldo queda contra el
+  escritorio y el visitante se sentaría de espaldas al monitor.
+
+**Peso total tras procesar: 932 KB, contra 17,5 MB en crudo.**

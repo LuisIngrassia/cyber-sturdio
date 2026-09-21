@@ -43,6 +43,18 @@ export const shot = {
  * fondo, y se ve que el salón no tiene techo.
  */
 export const FOLLOW_OFFSET = new THREE.Vector3(0, 2.6, 4);
+
+/** Eje vertical, reutilizado para no crear un vector por frame. */
+const UP = new THREE.Vector3(0, 1, 0);
+
+/**
+ * El rumbo con el que el desplazamiento está escrito.
+ *
+ * `FOLLOW_OFFSET` describe la cámara para alguien que mira hacia -Z, que es el
+ * rumbo con el que el visitante entra al local. Para cualquier otro, el
+ * desplazamiento se gira por la diferencia.
+ */
+const OFFSET_HEADING = Math.PI;
 /** A qué altura del avatar mira. Al pecho, no a los pies. */
 export const FOLLOW_LOOK_HEIGHT = 1.3;
 
@@ -77,13 +89,15 @@ const BOUNDS_MARGIN = 0.7;
 export function followPosition(
   x: number,
   z: number,
-  bounds?: CameraBounds
+  bounds?: CameraBounds,
+  heading = OFFSET_HEADING
 ): THREE.Vector3 {
-  const position = new THREE.Vector3(
-    x + FOLLOW_OFFSET.x,
-    FOLLOW_OFFSET.y,
-    z + FOLLOW_OFFSET.z
+  const offset = FOLLOW_OFFSET.clone().applyAxisAngle(
+    UP,
+    heading - OFFSET_HEADING
   );
+
+  const position = new THREE.Vector3(x + offset.x, offset.y, z + offset.z);
 
   if (bounds) {
     position.x = THREE.MathUtils.clamp(
@@ -111,8 +125,47 @@ export type CameraRigProps = {
 export function CameraRig({ mode, stiffness = 2.4, bounds }: CameraRigProps) {
   const camera = useThree((state) => state.camera);
   const lookAt = useRef(new THREE.Vector3());
+  /**
+   * Hacia dónde está mirando la cámara alrededor del avatar.
+   *
+   * Persigue al rumbo del avatar, pero mucho más lento. Con un desplazamiento
+   * fijo en el mundo, la cámara miraba siempre hacia el fondo del salón y los
+   * puestos —que están contra la pared izquierda— nunca entraban en cuadro: el
+   * visitante no podía ni verlos ni clickearlos. Girando con el personaje,
+   * caminar hacia ellos los trae al frente.
+   *
+   * La lentitud no es un detalle. Con el click-to-walk el rumbo cambia de golpe
+   * en cada esquina del recorrido, y una cámara que copiara eso al instante
+   * daría un latigazo por cada giro.
+   */
+  const yaw = useRef(OFFSET_HEADING);
 
   useFrame((_, delta) => {
+    if (import.meta.env.DEV) {
+      /**
+       * Cámara libre para inspeccionar, desde la consola:
+       *
+       *   __freeCam = { pos: [x,y,z], target: [x,y,z] }
+       *   __freeCam = null   // devuelve el control
+       *
+       * Colocar muebles a ojo exige mirarlos desde donde uno quiere, y los tres
+       * modos del rig están atados al avatar o a una toma guionada. Sin esto,
+       * cada verificación obliga a mover al personaje y conformarse con el
+       * ángulo que resulte.
+       */
+      const free = (window as unknown as Record<string, unknown>).__freeCam as
+        | { pos: [number, number, number]; target: [number, number, number] }
+        | null
+        | undefined;
+
+      if (free) {
+        camera.position.set(...free.pos);
+        lookAt.current.set(...free.target);
+        camera.lookAt(lookAt.current);
+        return;
+      }
+    }
+
     if (import.meta.env.DEV) {
       // Una cámara mal ubicada se ve como "hay una pared adelante" y desde
       // afuera no hay forma de distinguir eso de un problema de geometría.
@@ -133,8 +186,17 @@ export function CameraRig({ mode, stiffness = 2.4, bounds }: CameraRigProps) {
     }
 
     if (mode === "follow") {
+      // Diferencia de ángulo por el camino corto, para que cruzar de +170° a
+      // -170° no haga girar la cámara 340 grados para el lado largo.
+      const turn =
+        THREE.MathUtils.euclideanModulo(
+          player.facing - yaw.current + Math.PI,
+          Math.PI * 2
+        ) - Math.PI;
+      yaw.current += turn * (1 - Math.exp(-1.6 * delta));
+
       shot.position.copy(
-        followPosition(player.position.x, player.position.z, bounds)
+        followPosition(player.position.x, player.position.z, bounds, yaw.current)
       );
       shot.target.set(
         player.position.x,

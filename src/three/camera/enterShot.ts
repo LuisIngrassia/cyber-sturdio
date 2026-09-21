@@ -1,4 +1,5 @@
 import gsap from "gsap";
+import "./gsapSetup";
 import * as THREE from "three";
 
 import { player, teleport } from "../player/playerState";

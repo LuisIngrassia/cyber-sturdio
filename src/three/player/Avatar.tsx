@@ -3,6 +3,7 @@ import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
 
+import { FLOOR_LAYERS } from "../lib/layers";
 import { PALETTE } from "../lib/palette";
 import { useAvatarClips } from "./clips";
 import { advance, player } from "./playerState";
@@ -100,16 +101,20 @@ export function Avatar() {
   }, [scene]);
 
   /**
-   * Qué clip está sonando. Empieza en nulo para que el primer frame lo ponga.
+   * Qué clip se quiso poner la última vez.
    *
-   * La transición se maneja desde el loop y no desde un efecto. Con un efecto,
-   * el doble montaje de StrictMode dejaba la acción de reposo detenida —el
-   * `fadeOut` de la limpieza pisaba al `play` del montaje siguiente— y el
-   * personaje se quedaba en pose de bind, con los brazos en cruz y la malla
-   * estirada en púas. Desde el loop el estado se corrige solo en el frame
-   * siguiente, sin importar en qué orden React monte y desmonte.
+   * Es solo la intención: la verdad se le pregunta al mezclador. La diferencia
+   * importa porque el doble montaje de StrictMode conserva los refs pero hace
+   * que drei arme un mezclador nuevo con acciones nuevas. Confiando solo en
+   * esta variable, la segunda vida del componente creía que el reposo ya estaba
+   * sonando —lo había puesto la primera— y nunca lo arrancaba sobre el
+   * mezclador que efectivamente se está dibujando. El personaje quedaba en pose
+   * de bind, con los brazos en cruz.
+   *
+   * Comprobar además `isRunning()` hace que el estado se repare solo en el
+   * frame siguiente, monte React como monte.
    */
-  const current = useRef<"idle" | "walk" | null>(null);
+  const intended = useRef<"idle" | "walk" | null>(null);
 
   useFrame((_, delta) => {
     advance(delta);
@@ -129,11 +134,14 @@ export function Avatar() {
 
     // Caminando es, simplemente, que le quede camino por recorrer.
     const wanted = player.path.length > 0 ? "walk" : "idle";
-    if (wanted === current.current) return;
+    const target = actions[wanted];
+    if (!target) return;
 
-    actions[current.current ?? ""]?.fadeOut(FADE);
-    actions[wanted]?.reset().fadeIn(FADE).play();
-    current.current = wanted;
+    if (intended.current === wanted && target.isRunning()) return;
+
+    actions[intended.current ?? ""]?.fadeOut(FADE);
+    target.reset().fadeIn(FADE).play();
+    intended.current = wanted;
   });
 
   return (
@@ -149,7 +157,11 @@ export function Avatar() {
        * hace lo único que importa: anclar la figura al piso. Sin algo acá
        * abajo, el avatar parece flotar un centímetro sobre el suelo.
        */}
-      <mesh position={[0, 0.015, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <mesh
+        position={[0, FLOOR_LAYERS.avatarShadow.y, 0]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        renderOrder={FLOOR_LAYERS.avatarShadow.order}
+      >
         <circleGeometry args={[0.3, 20]} />
         <meshBasicMaterial
           color={PALETTE.void}

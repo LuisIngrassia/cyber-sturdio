@@ -46,12 +46,22 @@ type UIState = {
   zone: Zone;
   /** El preloader terminó y el visitante ya apretó "entrar". */
   started: boolean;
+  /**
+   * Qué puesto está mirando de cerca, si hay alguno.
+   *
+   * Es estado de React y no del loop porque cambia de a saltos y sí tiene que
+   * re-renderizar: la interfaz muestra el aviso para volver, y la cámara cambia
+   * de modo. Distinto del hover, que cambia con cada movimiento del puntero y
+   * por eso se consulta desde el frame loop.
+   */
+  focused: string | null;
 
   openScreen: (screen: ScreenId, payload?: unknown) => void;
   closeScreen: () => void;
   setHovered: (id: string | null, label?: string | null) => void;
   setZone: (zone: Zone) => void;
   start: () => void;
+  setFocused: (id: string | null) => void;
 };
 
 export const useUIStore = create<UIState>((set) => ({
@@ -61,6 +71,7 @@ export const useUIStore = create<UIState>((set) => ({
   hoveredLabel: null,
   zone: "facade",
   started: false,
+  focused: null,
 
   openScreen: (screen, payload = null) =>
     // Al abrir una pantalla se limpia el hover: el cursor queda sobre el modal
@@ -85,6 +96,7 @@ export const useUIStore = create<UIState>((set) => ({
    */
   setZone: (zone) => set({ zone, hoveredId: null, hoveredLabel: null }),
   start: () => set({ started: true }),
+  setFocused: (focused) => set({ focused }),
 }));
 
 /**
