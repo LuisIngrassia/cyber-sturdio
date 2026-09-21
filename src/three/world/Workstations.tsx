@@ -21,7 +21,7 @@ import {
   WITH_PROPS,
   type Station,
 } from "./stations";
-import { useProp } from "./useProp";
+import { planarUVs, useProp, type PropPart } from "./useProp";
 
 /**
  * Los muebles se tiñen hacia la paleta del local.
@@ -34,6 +34,23 @@ import { useProp } from "./useProp";
  */
 const FURNITURE_TINT = { color: "#6b6152", roughness: 0.9 };
 const PLASTIC_TINT = { color: PALETTE.shell, roughness: 0.65 };
+
+/**
+ * El material que el modelo del monitor usa para el área de imagen del tubo.
+ *
+ * Esa pieza se separa del resto: las demás van instanciadas —son idénticas en
+ * los seis puestos— pero cada pantalla muestra un proyecto distinto y necesita
+ * su propio material.
+ */
+const SCREEN_MATERIAL = "Win 98 Screen";
+
+/**
+ * El vidrio del tubo, que va delante del área de imagen.
+ *
+ * Conserva su negro original: teñido del gris del plástico se vuelve una placa
+ * opaca que tapa la pantalla.
+ */
+const GLASS_MATERIAL = "Screen Surface";
 
 /**
  * Los puestos de computadora: una máquina por proyecto.
@@ -84,7 +101,7 @@ export function Workstations({ onUse }: WorkstationsProps) {
   });
   const monitor = useProp(MONITOR_URL, {
     height: MONITOR_HEIGHT,
-    tint: PLASTIC_TINT,
+    tint: { ...PLASTIC_TINT, except: [GLASS_MATERIAL, SCREEN_MATERIAL] },
   });
   const chair = useProp(CHAIR_URL, {
     height: CHAIR_HEIGHT,
@@ -121,26 +138,40 @@ export function Workstations({ onUse }: WorkstationsProps) {
   );
 
   /**
-   * Dónde apoyar la pantalla, medido sobre la geometría del monitor.
+   * La pantalla se separa del resto del monitor.
    *
-   * El monitor y el teclado vienen como una sola malla, así que no hay un nodo
-   * "pantalla" que consultar ni forma de deducir de los números cuál es el
-   * frente. Se toma la caja del conjunto ya normalizado: el borde en +X es el
-   * lado que mira al salón, y la pantalla va sobre la mitad superior.
+   * Antes era un plano flotando por delante del CRT, colocado con números
+   * estimados: quedaba corrido respecto del marco. Usando la pieza que el
+   * propio modelo trae para el área de imagen, el encaje es exacto por
+   * construcción —incluidas las esquinas redondeadas del tubo— y no hay nada
+   * que ajustar a ojo.
+   *
+   * Le faltan las coordenadas de textura porque en el modelo original era una
+   * superficie de color liso; se deducen proyectando su plano. Ver `planarUVs`.
    */
-  const screenSpot = useMemo(() => {
-    const box = new THREE.Box3();
+  const { screenPart, monitorBody } = useMemo(() => {
+    const body: PropPart[] = [];
+    let screen: PropPart | null = null;
+
     for (const part of monitor) {
-      part.geometry.computeBoundingBox();
-      box.union(part.geometry.boundingBox!);
+      if (part.name === SCREEN_MATERIAL && !screen) {
+        const geometry = part.geometry.clone();
+        // La pantalla mira al salón, sobre +X: a lo ancho corre Z y a lo alto Y.
+        // Espejada, porque mirándola desde +X el eje Z crece hacia la izquierda.
+        planarUVs(geometry, 2, 1, true);
+        screen = { ...part, geometry };
+      } else {
+        body.push(part);
+      }
     }
-    return { front: box.max.x, top: box.max.y, center: box.getCenter(new THREE.Vector3()) };
+
+    return { screenPart: screen, monitorBody: body };
   }, [monitor]);
 
   return (
     <group>
       <Instanced parts={desk} items={desks} />
-      <Instanced parts={monitor} items={monitors} />
+      <Instanced parts={monitorBody} items={monitors} />
       <Instanced parts={chair} items={chairs} />
       <Instanced parts={props} items={propDesks} />
 
@@ -151,7 +182,7 @@ export function Workstations({ onUse }: WorkstationsProps) {
           label={station.nombre}
           onActivate={() => onUse(station)}
         >
-          <Screen station={station} spot={screenSpot} />
+          {screenPart && <Screen station={station} part={screenPart} />}
 
           {/**
            * El blanco del click, invisible.
@@ -183,9 +214,18 @@ export function Workstations({ onUse }: WorkstationsProps) {
  * una pantalla es una fuente de luz, no algo iluminado, y saltearse el tone
  * mapping es lo que le deja pasar el umbral del bloom.
  */
-type ScreenSpot = { front: number; top: number; center: THREE.Vector3 };
-
-function Screen({ station, spot }: { station: Station; spot: ScreenSpot }) {
+/**
+ * La pantalla encendida.
+ *
+ * Va aparte de las instancias porque cada una muestra un proyecto distinto y
+ * por lo tanto tiene su propio material. Seis llamadas de dibujo más, que es el
+ * precio de que cada máquina diga qué es.
+ *
+ * `meshBasicMaterial` y `toneMapped={false}`, igual que los carteles de neón:
+ * una pantalla es una fuente de luz, no algo iluminado, y saltearse el tone
+ * mapping es lo que le deja pasar el umbral del bloom.
+ */
+function Screen({ station, part }: { station: Station; part: PropPart }) {
   const material = useMemo(
     () =>
       new THREE.MeshBasicMaterial({
@@ -221,15 +261,16 @@ function Screen({ station, spot }: { station: Station; spot: ScreenSpot }) {
   return (
     <mesh
       ref={ref}
-      position={[
-        DESK_X + spot.front + 0.004,
-        DESK_SURFACE_Y + spot.top * 0.62,
-        station.z + spot.center.z,
-      ]}
-      rotation={[0, Math.PI / 2, 0]}
+      geometry={part.geometry}
       material={material}
-    >
-      <planeGeometry args={[0.3, 0.22]} />
-    </mesh>
+      /**
+       * Un milímetro por delante del vidrio.
+       *
+       * El modelo trae dos piezas coplanares: el vidrio del tubo y, encima, el
+       * área de imagen. Dejadas a la misma profundidad pelean por el z-buffer y
+       * la pantalla parpadea o desaparece detrás del vidrio.
+       */
+      position={[DESK_X + 0.004, DESK_SURFACE_Y, station.z]}
+    />
   );
 }

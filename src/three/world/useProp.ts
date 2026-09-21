@@ -33,6 +33,8 @@ import * as THREE from "three";
 export type PropPart = {
   geometry: THREE.BufferGeometry;
   material: THREE.Material;
+  /** Nombre del material de origen, para poder encontrar una pieza concreta. */
+  name: string;
 };
 
 export type PropOptions = {
@@ -44,6 +46,14 @@ export type PropOptions = {
     roughness?: number;
     metalness?: number;
     envMapIntensity?: number;
+    /**
+     * Materiales que conservan su color original.
+     *
+     * Hace falta para las piezas cuyo color es funcional y no decorativo: el
+     * vidrio del monitor es negro a propósito, y teñirlo del gris del plástico
+     * lo convierte en una placa opaca que tapa la pantalla que tiene detrás.
+     */
+    except?: string[];
   };
   /** Solo estos nodos raíz. Para usar parte de un modelo. */
   only?: string[];
@@ -72,6 +82,50 @@ const DEFAULT_TINT = {
    */
   envMapIntensity: 0.5,
 };
+
+/**
+ * Le inventa coordenadas de textura a un cuadrilátero plano.
+ *
+ * La pantalla del monitor no trae UVs: en el modelo original es una superficie
+ * de color liso y nunca las necesitó. Como es plana, se pueden deducir
+ * proyectando dos de sus coordenadas sobre su propia caja.
+ *
+ * Qué eje va a lo ancho y cuál a lo alto se pasa explícito. Deducirlo de la
+ * normal parece más cómodo pero deja la elección al azar, y con los ejes al
+ * revés el texto sale escrito en vertical.
+ *
+ * Es lo que permite pintar la captura de cada proyecto sobre la geometría real
+ * del CRT en vez de flotarle un plano por delante: encaja exacta con el marco,
+ * incluidas las esquinas redondeadas del tubo, sin ningún número a ojo.
+ */
+export function planarUVs(
+  geometry: THREE.BufferGeometry,
+  /** Qué eje del mundo corre a lo ancho de la imagen. */
+  u: 0 | 1 | 2,
+  /** Cuál a lo alto. */
+  v: 0 | 1 | 2,
+  /** Espeja el eje horizontal, para cuando la cara mira al otro lado. */
+  flipU = false
+) {
+  const position = geometry.getAttribute("position");
+  geometry.computeBoundingBox();
+  const box = geometry.boundingBox!;
+
+  const min = box.min.toArray();
+  const max = box.max.toArray();
+  const span = (a: number) => Math.max(1e-6, max[a] - min[a]);
+
+  const uvs = new Float32Array(position.count * 2);
+  for (let i = 0; i < position.count; i++) {
+    const p = [position.getX(i), position.getY(i), position.getZ(i)];
+    const s = (p[u] - min[u]) / span(u);
+    uvs[i * 2] = flipU ? 1 - s : s;
+    uvs[i * 2 + 1] = (p[v] - min[v]) / span(v);
+  }
+
+  geometry.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
+  return geometry;
+}
 
 export function useProp(url: string, options: PropOptions): PropPart[] {
   const { scene } = useGLTF(url);
@@ -126,12 +180,13 @@ export function useProp(url: string, options: PropOptions): PropPart[] {
 
       const source = node.material as THREE.MeshStandardMaterial;
       const material = source.clone();
-      if (tint.color) material.color = new THREE.Color(tint.color);
+      const keepColor = tint.except?.includes(source.name ?? "");
+      if (tint.color && !keepColor) material.color = new THREE.Color(tint.color);
       material.roughness = tint.roughness;
       material.metalness = tint.metalness;
       material.envMapIntensity = tint.envMapIntensity;
 
-      parts.push({ geometry, material });
+      parts.push({ geometry, material, name: source.name ?? "" });
     });
 
     return parts;
@@ -141,6 +196,7 @@ export function useProp(url: string, options: PropOptions): PropPart[] {
     height,
     only,
     tint.color,
+    tint.except,
     tint.roughness,
     tint.metalness,
     tint.envMapIntensity,
