@@ -41,15 +41,24 @@ export const MONITOR_HEIGHT = 0.42;
 export const CHAIR_HEIGHT = 0.9;
 
 /**
- * El escritorio y la silla van girados media vuelta.
+ * El escritorio va sin rotar.
  *
- * El escritorio tiene un respaldo que sube veinticinco centímetros por encima
- * de la tapa y que, sin girar, queda del lado del salón tapándole el teclado a
- * quien se sienta. La silla, sin girar, deja su respaldo contra el escritorio:
- * el visitante se sentaría de espaldas al monitor.
+ * Su lado largo ya corre sobre Z y el cuerpo es casi simétrico, así que girarlo
+ * no acomoda nada: solo invierte el poco volumen asimétrico que tiene y deja el
+ * mueble al revés. Lo que parecía un respaldo que había que mandar contra la
+ * pared resultaron ser seis vértices sueltos a dos unidades de altura, que
+ * inflan la caja del modelo pero no se ven.
  */
-export const DESK_ROTATION = Math.PI;
-export const CHAIR_ROTATION = Math.PI;
+export const DESK_ROTATION = 0;
+
+/**
+ * La silla gira un cuarto de vuelta, no media.
+ *
+ * Su respaldo está sobre -Z. Para que mire al escritorio —que está sobre -X—
+ * hay que llevar el respaldo a +X, y eso es -90°. Con media vuelta el respaldo
+ * termina en +Z y la silla queda de costado.
+ */
+export const CHAIR_ROTATION = -Math.PI / 2;
 
 /** En qué puestos hay utilería. Dos, para que no se note la repetición. */
 export const WITH_PROPS = new Set([1, 4]);
